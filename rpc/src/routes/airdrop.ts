@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAirdropContract, AIRDROP_ADDRESS, ensureContractDeployed } from "../contracts";
+import { getAirdropContract, AIRDROP_ADDRESS, ensureContractDeployed, STATIC_MODE } from "../contracts";
 import { getProofForAddress, getAllEntries } from "../merkle";
 import { ethers } from "ethers";
 
@@ -11,6 +11,16 @@ export const airdropRouter = Router();
  */
 airdropRouter.get("/status", async (_req: Request, res: Response) => {
   try {
+    if (STATIC_MODE) {
+      res.json({
+        active: true,
+        deadline: "0",
+        totalClaimed: "0.0",
+        balance: "50000000.0",
+        merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      });
+      return;
+    }
     const contract = getAirdropContract();
     await ensureContractDeployed(AIRDROP_ADDRESS, "TokenAirdrop");
     const [active, deadline, totalClaimed, balance, root] = await Promise.all([
@@ -52,9 +62,12 @@ airdropRouter.get("/proof/:address", async (req: Request, res: Response) => {
     }
 
     // Check on-chain claim status
-    const contract = getAirdropContract();
-    await ensureContractDeployed(AIRDROP_ADDRESS, "TokenAirdrop");
-    const claimed = await contract.hasClaimed(address);
+    let claimed = false;
+    if (!STATIC_MODE) {
+      const contract = getAirdropContract();
+      await ensureContractDeployed(AIRDROP_ADDRESS, "TokenAirdrop");
+      claimed = await contract.hasClaimed(address);
+    }
 
     res.json({
       eligible: true,
@@ -95,6 +108,10 @@ airdropRouter.get("/claimed/:address", async (req: Request, res: Response) => {
     const { address } = req.params;
     if (!ethers.isAddress(address)) {
       res.status(400).json({ error: "Invalid Ethereum address" });
+      return;
+    }
+    if (STATIC_MODE) {
+      res.json({ address, claimed: false });
       return;
     }
     const contract = getAirdropContract();
