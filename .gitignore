@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.log
+.env
+
+# rpc
+rpc/node_modules/
+rpc/dist/
+rpc/cache/
+rpc/artifacts/
+rpc/typechain-types/
+rpc/coverage/
+rpc/data/merkle-tree.json
+
+# web
+web/node_modules/
+web/dist/
