@@ -48,6 +48,28 @@ export interface EntriesResponse {
   entries: AirdropEntry[];
 }
 
+export interface SwapStatus {
+  active: boolean;
+  rate: string;
+  rateFormatted: string;
+  usdtLiquidity: string;
+  adrpCollected: string;
+  swapAddress: string;
+  usdtAddress: string;
+}
+
+export interface SwapEstimate {
+  adrpIn: string;
+  usdtOut: string;
+  usdtOutRaw: string;
+}
+
+export interface UsdtBalance {
+  address: string;
+  balance: string;
+  balanceRaw: string;
+}
+
 export const api = {
   getAirdropStatus: () => fetchJson<AirdropStatus>("/api/airdrop/status"),
   getProof: (address: string) => fetchJson<ProofResponse>(`/api/airdrop/proof/${address}`),
@@ -56,4 +78,7 @@ export const api = {
   getTokenInfo: () => fetchJson<TokenInfo>("/api/token/info"),
   getTokenBalance: (address: string) => fetchJson<TokenBalance>(`/api/token/balance/${address}`),
   healthCheck: () => fetchJson<{ status: string; timestamp: number }>("/api/health"),
+  getSwapStatus: () => fetchJson<SwapStatus>("/api/swap/status"),
+  getSwapEstimate: (amount: string) => fetchJson<SwapEstimate>(`/api/swap/estimate/${amount}`),
+  getUsdtBalance: (address: string) => fetchJson<UsdtBalance>(`/api/swap/usdt-balance/${address}`),
 };

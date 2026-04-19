@@ -2,6 +2,9 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { BrowserProvider, JsonRpcSigner } from "ethers";
 
+const EXPECTED_CHAIN_ID = parseInt(import.meta.env.VITE_CHAIN_ID || "31337");
+const RPC_URL = import.meta.env.VITE_RPC_URL || "http://127.0.0.1:8545";
+
 declare global {
   interface Window {
     ethereum?: {
@@ -20,6 +23,8 @@ export const useWalletStore = defineStore("wallet", () => {
   const error = ref<string | null>(null);
 
   const isConnected = computed(() => !!address.value);
+  const isCorrectChain = computed(() => chainId.value === EXPECTED_CHAIN_ID);
+  const expectedChainId = EXPECTED_CHAIN_ID;
   const shortAddress = computed(() => {
     if (!address.value) return "";
     return `${address.value.slice(0, 6)}…${address.value.slice(-4)}`;
@@ -71,6 +76,46 @@ export const useWalletStore = defineStore("wallet", () => {
     return provider.getSigner();
   }
 
+  /** Try to add and switch to the expected chain. Returns true on success. */
+  async function ensureChain(): Promise<boolean> {
+    if (!window.ethereum) return false;
+    if (isCorrectChain.value) return true;
+
+    const chainHex = "0x" + EXPECTED_CHAIN_ID.toString(16);
+
+    // Try adding the chain first (this also switches in most wallets)
+    try {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: chainHex,
+          chainName: "Hardhat Local",
+          nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+          rpcUrls: [RPC_URL],
+        }],
+      });
+      // Re-read chain after add
+      const chain = (await window.ethereum.request({ method: "eth_chainId" })) as string;
+      chainId.value = parseInt(chain, 16);
+      if (chainId.value === EXPECTED_CHAIN_ID) return true;
+    } catch {
+      // wallet_addEthereumChain may not be supported, try switch
+    }
+
+    // Fallback: try switching
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: chainHex }],
+      });
+      const chain = (await window.ethereum.request({ method: "eth_chainId" })) as string;
+      chainId.value = parseInt(chain, 16);
+      return chainId.value === EXPECTED_CHAIN_ID;
+    } catch {
+      return false;
+    }
+  }
+
   function handleAccountsChanged(accounts: unknown) {
     const accs = accounts as string[];
     if (accs.length === 0) {
@@ -89,10 +134,13 @@ export const useWalletStore = defineStore("wallet", () => {
     chainId,
     isConnecting,
     isConnected,
+    isCorrectChain,
+    expectedChainId,
     shortAddress,
     error,
     connect,
     disconnect,
     getSigner,
+    ensureChain,
   };
 });

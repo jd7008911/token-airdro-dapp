@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
-import { ethers, Contract, BrowserProvider } from "ethers";
+import { ethers, Contract, JsonRpcProvider } from "ethers";
 import { useWalletStore } from "../stores/wallet";
 import { api } from "../api";
 import type { TokenInfo } from "../api";
@@ -21,6 +21,7 @@ const error = ref<string | null>(null);
 const success = ref<string | null>(null);
 
 const TOKEN_ADDRESS = import.meta.env.VITE_TOKEN_ADDRESS;
+const RPC_URL = import.meta.env.VITE_RPC_URL || "http://127.0.0.1:8545";
 const TOKEN_ABI = [
   "function transfer(address to, uint256 amount) returns (bool)",
   "function balanceOf(address) view returns (uint256)",
@@ -33,12 +34,10 @@ async function loadBalances() {
   error.value = null;
 
   try {
-    // ETH balance
-    if (window.ethereum) {
-      const provider = new BrowserProvider(window.ethereum);
-      const bal = await provider.getBalance(wallet.address);
-      ethBalance.value = parseFloat(ethers.formatEther(bal)).toFixed(4);
-    }
+    // ETH balance — always read from Hardhat RPC directly
+    const rpcProvider = new JsonRpcProvider(RPC_URL);
+    const bal = await rpcProvider.getBalance(wallet.address);
+    ethBalance.value = parseFloat(ethers.formatEther(bal)).toFixed(4);
 
     // Token balance from API
     const res = await api.getTokenBalance(wallet.address).catch(() => null);
@@ -69,6 +68,23 @@ async function transferTokens() {
     return;
   }
 
+  // Check sufficient balance before sending the transaction
+  const currentBalance = parseFloat(tokenBalance.value ?? "0");
+  if (amount > currentBalance) {
+    // Check if user has an unclaimed airdrop
+    try {
+      const proof = await api.getProof(wallet.address!);
+      if (proof.eligible && !proof.claimed) {
+        error.value = `Insufficient balance (${currentBalance} ${tokenInfo.value?.symbol ?? "tokens"}). You have an unclaimed airdrop of ${proof.amountFormatted} tokens — go to the Claim page first!`;
+      } else {
+        error.value = `Insufficient balance. You only have ${currentBalance} ${tokenInfo.value?.symbol ?? "tokens"}.`;
+      }
+    } catch {
+      error.value = `Insufficient balance. You only have ${currentBalance} ${tokenInfo.value?.symbol ?? "tokens"}.`;
+    }
+    return;
+  }
+
   const signer = await wallet.getSigner();
   if (!signer) {
     error.value = "Could not get signer";
@@ -81,8 +97,16 @@ async function transferTokens() {
   txHash.value = null;
 
   try {
+    // Ensure we're on the correct chain before transferring
+    const switched = await wallet.ensureChain();
+    if (!switched) {
+      error.value = `Please switch your wallet to Hardhat Local (chain ${wallet.expectedChainId}) manually. Add RPC URL http://127.0.0.1:8545, Chain ID ${wallet.expectedChainId}.`;
+      transferring.value = false;
+      return;
+    }
+
     const contract = new Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
-    const amountWei = ethers.parseEther(transferAmount.value);
+    const amountWei = ethers.parseEther(String(transferAmount.value));
     const tx = await contract.transfer(recipient.value, amountWei);
     txHash.value = tx.hash;
     await tx.wait();
@@ -117,6 +141,14 @@ function formatNumber(val: string | undefined | null): string {
 onMounted(() => {
   if (wallet.address) loadBalances();
 });
+
+async function switchNetwork() {
+  error.value = null;
+  const ok = await wallet.ensureChain();
+  if (!ok) {
+    error.value = `Could not switch automatically. Please add a custom network in your wallet: RPC URL http://127.0.0.1:8545, Chain ID ${wallet.expectedChainId}, Currency ETH.`;
+  }
+}
 </script>
 
 <template>
@@ -136,6 +168,23 @@ onMounted(() => {
 
     <!-- Connected -->
     <div v-else style="margin-top: 24px">
+      <!-- Wrong network warning -->
+      <div v-if="!wallet.isCorrectChain" class="card" style="margin-bottom: 16px; border-color: var(--error); background: rgba(239, 68, 68, 0.08)">
+        <p style="color: var(--error); font-weight: 600; margin-bottom: 8px">⚠ Wrong Network</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem">
+          Your wallet is on Chain ID <strong>{{ wallet.chainId }}</strong>.
+          Please switch to <strong>Hardhat Local ({{ wallet.expectedChainId }})</strong> to interact with the airdrop contracts.
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px">
+          If the button below doesn't work, manually add a custom network in your wallet:<br>
+          <strong>RPC URL:</strong> <code>http://127.0.0.1:8545</code> &nbsp;
+          <strong>Chain ID:</strong> <code>{{ wallet.expectedChainId }}</code>
+        </p>
+        <button class="btn-primary" style="margin-top: 12px" @click="switchNetwork">
+          Switch to Hardhat Network
+        </button>
+      </div>
+
       <!-- Address -->
       <div class="card" style="margin-bottom: 16px">
         <div style="color: var(--text-muted); font-size: 0.85rem">Connected Address</div>

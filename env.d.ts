@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE: string;
   readonly VITE_TOKEN_ADDRESS: string;
   readonly VITE_AIRDROP_ADDRESS: string;
+  readonly VITE_SWAP_ADDRESS: string;
+  readonly VITE_USDT_ADDRESS: string;
   readonly VITE_CHAIN_ID: string;
 }
 

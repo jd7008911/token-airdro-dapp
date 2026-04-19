@@ -1,0 +1,1 @@
+{"root":["./src/api.ts","./src/main.ts","./src/router.ts","./src/stores/wallet.ts","./src/app.vue","./src/components/navbar.vue","./src/views/adminview.vue","./src/views/claimview.vue","./src/views/homeview.vue","./src/views/walletview.vue","./env.d.ts"],"version":"5.9.3"}
