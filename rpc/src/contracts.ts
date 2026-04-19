@@ -2,11 +2,23 @@ import { ethers } from "ethers";
 
 const INFURA_KEY = process.env.INFURA_API_KEY || "";
 const NETWORK = process.env.NETWORK || "localhost";
-const RPC_URL = INFURA_KEY && NETWORK !== "localhost"
-  ? `https://${NETWORK === "mainnet" ? "mainnet" : NETWORK}.infura.io/v3/${INFURA_KEY}`
-  : "http://127.0.0.1:8545";
+
+function resolveRpcUrl(): string {
+  // Allow explicit override via RPC_URL env var
+  if (process.env.RPC_URL) return process.env.RPC_URL;
+  // Construct from INFURA_KEY + NETWORK
+  if (INFURA_KEY && NETWORK !== "localhost") {
+    const host = NETWORK === "mainnet" ? "mainnet" : NETWORK;
+    return `https://${host}.infura.io/v3/${INFURA_KEY}`;
+  }
+  return "http://127.0.0.1:8545";
+}
+
+const RPC_URL = resolveRpcUrl();
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS || "";
 const AIRDROP_ADDRESS = process.env.AIRDROP_ADDRESS || "";
+
+console.log(`[contracts] Network: ${NETWORK}, RPC: ${RPC_URL}`);
 
 export const provider = new ethers.JsonRpcProvider(RPC_URL);
 
