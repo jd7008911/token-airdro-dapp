@@ -5,11 +5,13 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import path from "path";
 
-// Load .env from rpc root
+// Load .env from rpc root (local dev only; Railway injects env vars directly)
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config(); // Also check cwd for .env
 
 import { airdropRouter } from "./routes/airdrop";
 import { tokenRouter } from "./routes/token";
+import { swapRouter } from "./routes/swap";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,6 +32,7 @@ app.use(limiter);
 // ── Routes ───────────────────────────────────────────────────────────
 app.use("/api/airdrop", airdropRouter);
 app.use("/api/token", tokenRouter);
+app.use("/api/swap", swapRouter);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: Date.now() });

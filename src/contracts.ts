@@ -1,6 +1,10 @@
 import { ethers } from "ethers";
 
-const RPC_URL = process.env.SEPOLIA_RPC_URL || "http://127.0.0.1:8545";
+const INFURA_KEY = process.env.INFURA_API_KEY || "";
+const NETWORK = process.env.NETWORK || "localhost";
+const RPC_URL = INFURA_KEY && NETWORK !== "localhost"
+  ? `https://${NETWORK === "mainnet" ? "mainnet" : NETWORK}.infura.io/v3/${INFURA_KEY}`
+  : "http://127.0.0.1:8545";
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS || "";
 const AIRDROP_ADDRESS = process.env.AIRDROP_ADDRESS || "";
 
@@ -38,4 +42,15 @@ export function getAirdropContract() {
   return new ethers.Contract(AIRDROP_ADDRESS, AIRDROP_ABI, provider);
 }
 
-export { TOKEN_ADDRESS, AIRDROP_ADDRESS };
+/** Check whether a contract address actually has code on the current network. */
+export async function ensureContractDeployed(address: string, label: string): Promise<void> {
+  const code = await provider.getCode(address);
+  if (code === "0x" || code === "0x0") {
+    throw new Error(
+      `${label} contract not found at ${address} on ${NETWORK}. ` +
+      `Deploy contracts to ${NETWORK} first, then update the address env vars.`
+    );
+  }
+}
+
+export { TOKEN_ADDRESS, AIRDROP_ADDRESS, NETWORK };

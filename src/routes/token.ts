@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getTokenContract } from "../contracts";
+import { getTokenContract, TOKEN_ADDRESS, ensureContractDeployed } from "../contracts";
 import { ethers } from "ethers";
 
 export const tokenRouter = Router();
@@ -11,6 +11,7 @@ export const tokenRouter = Router();
 tokenRouter.get("/info", async (_req: Request, res: Response) => {
   try {
     const token = getTokenContract();
+    await ensureContractDeployed(TOKEN_ADDRESS, "AirdropToken");
     const [name, symbol, decimals, totalSupply] = await Promise.all([
       token.name(),
       token.symbol(),
@@ -41,6 +42,7 @@ tokenRouter.get("/balance/:address", async (req: Request, res: Response) => {
       return;
     }
     const token = getTokenContract();
+    await ensureContractDeployed(TOKEN_ADDRESS, "AirdropToken");
     const balance = await token.balanceOf(address);
     res.json({
       address,
