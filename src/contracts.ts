@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 
 const INFURA_KEY = process.env.INFURA_API_KEY || "";
 const NETWORK = process.env.NETWORK || "localhost";
+const STATIC_MODE = process.env.STATIC_MODE === "true";
 
 function resolveRpcUrl(): string {
   // Allow explicit override via RPC_URL env var
@@ -18,9 +19,11 @@ const RPC_URL = resolveRpcUrl();
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS || "";
 const AIRDROP_ADDRESS = process.env.AIRDROP_ADDRESS || "";
 
-console.log(`[contracts] Network: ${NETWORK}, RPC: ${RPC_URL}`);
+console.log(`[contracts] Network: ${NETWORK}, RPC: ${RPC_URL}, Static: ${STATIC_MODE}`);
 
-export const provider = new ethers.JsonRpcProvider(RPC_URL);
+export const provider = STATIC_MODE
+  ? (null as unknown as ethers.JsonRpcProvider)
+  : new ethers.JsonRpcProvider(RPC_URL);
 
 // ABIs (minimal)
 const TOKEN_ABI = [
@@ -56,6 +59,7 @@ export function getAirdropContract() {
 
 /** Check whether a contract address actually has code on the current network. */
 export async function ensureContractDeployed(address: string, label: string): Promise<void> {
+  if (STATIC_MODE) return; // skip check in static mode
   const code = await provider.getCode(address);
   if (code === "0x" || code === "0x0") {
     throw new Error(
@@ -65,4 +69,4 @@ export async function ensureContractDeployed(address: string, label: string): Pr
   }
 }
 
-export { TOKEN_ADDRESS, AIRDROP_ADDRESS, NETWORK };
+export { TOKEN_ADDRESS, AIRDROP_ADDRESS, NETWORK, STATIC_MODE };

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { ethers } from "ethers";
-import { provider, ensureContractDeployed } from "../contracts";
+import { provider, ensureContractDeployed, STATIC_MODE } from "../contracts";
 
 export const swapRouter = Router();
 
@@ -38,6 +38,18 @@ function getUsdtContract() {
  */
 swapRouter.get("/status", async (_req: Request, res: Response) => {
   try {
+    if (STATIC_MODE) {
+      res.json({
+        active: true,
+        rate: "500000",
+        rateFormatted: "0.500000",
+        usdtLiquidity: "10000000.00",
+        adrpCollected: "0.0",
+        swapAddress: SWAP_ADDRESS,
+        usdtAddress: USDT_ADDRESS,
+      });
+      return;
+    }
     const swap = getSwapContract();
     await ensureContractDeployed(SWAP_ADDRESS, "TokenSwap");
     const [rateRaw, active, usdtBal, adrpBal] = await Promise.all([
@@ -77,6 +89,12 @@ swapRouter.get("/estimate/:amount", async (req: Request, res: Response) => {
       return;
     }
 
+    if (STATIC_MODE) {
+      const usdtOut = (amountFloat * 0.5).toFixed(6);
+      res.json({ adrpIn: amount, usdtOut, usdtOutRaw: String(Math.round(amountFloat * 0.5 * 1e6)) });
+      return;
+    }
+
     const swap = getSwapContract();
     await ensureContractDeployed(SWAP_ADDRESS, "TokenSwap");
     const amountWei = ethers.parseEther(String(amount));
@@ -101,6 +119,11 @@ swapRouter.get("/usdt-balance/:address", async (req: Request, res: Response) => 
     const { address } = req.params;
     if (!ethers.isAddress(address)) {
       res.status(400).json({ error: "Invalid Ethereum address" });
+      return;
+    }
+
+    if (STATIC_MODE) {
+      res.json({ address, balance: "0.000000", balanceRaw: "0" });
       return;
     }
 

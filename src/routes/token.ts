@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getTokenContract, TOKEN_ADDRESS, ensureContractDeployed } from "../contracts";
+import { getTokenContract, TOKEN_ADDRESS, ensureContractDeployed, STATIC_MODE } from "../contracts";
 import { ethers } from "ethers";
 
 export const tokenRouter = Router();
@@ -10,6 +10,15 @@ export const tokenRouter = Router();
  */
 tokenRouter.get("/info", async (_req: Request, res: Response) => {
   try {
+    if (STATIC_MODE) {
+      res.json({
+        name: "AirdropToken",
+        symbol: "ADRP",
+        decimals: 18,
+        totalSupply: "100000000.0",
+      });
+      return;
+    }
     const token = getTokenContract();
     await ensureContractDeployed(TOKEN_ADDRESS, "AirdropToken");
     const [name, symbol, decimals, totalSupply] = await Promise.all([
@@ -39,6 +48,10 @@ tokenRouter.get("/balance/:address", async (req: Request, res: Response) => {
     const { address } = req.params;
     if (!ethers.isAddress(address)) {
       res.status(400).json({ error: "Invalid Ethereum address" });
+      return;
+    }
+    if (STATIC_MODE) {
+      res.json({ address, balance: "0.0" });
       return;
     }
     const token = getTokenContract();
