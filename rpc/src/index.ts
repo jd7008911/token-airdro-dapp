@@ -16,6 +16,9 @@ import { swapRouter } from "./routes/swap";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust reverse proxy (Railway, Heroku, etc.) so rate-limiter sees real client IP
+app.set("trust proxy", 1);
+
 // ── Middleware ────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:5173" }));
