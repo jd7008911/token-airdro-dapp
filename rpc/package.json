@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "ts-node src/index.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
     "node": "npx hardhat node",
     "deploy:local": "npx hardhat run scripts/deploy.ts --network localhost",
     "deploy:sepolia": "npx hardhat run scripts/deploy.ts --network sepolia",
+    "deploy:swap": "npx hardhat run scripts/deploy-swap.ts --network localhost",
     "generate-merkle": "npx hardhat run scripts/generate-merkle.ts --network localhost"
   },
   "dependencies": {

@@ -15,6 +15,7 @@ const wallet = useWalletStore();
       <div class="nav-links">
         <RouterLink to="/">Home</RouterLink>
         <RouterLink to="/claim">Claim</RouterLink>
+        <RouterLink to="/swap">Swap</RouterLink>
         <RouterLink to="/wallet">Wallet</RouterLink>
         <RouterLink to="/admin">Admin</RouterLink>
       </div>

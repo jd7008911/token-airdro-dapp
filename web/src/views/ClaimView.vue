@@ -45,16 +45,25 @@ async function checkEligibility() {
 async function claimTokens() {
   if (!eligibility.value?.proof || !eligibility.value.amount) return;
 
-  const signer = await wallet.getSigner();
-  if (!signer) {
-    error.value = "Could not get signer";
-    return;
-  }
-
   claiming.value = true;
   error.value = null;
 
   try {
+    // Ensure we're on the correct chain before claiming
+    const switched = await wallet.ensureChain();
+    if (!switched) {
+      error.value = `Please switch your wallet to Hardhat Local (chain ${wallet.expectedChainId}) manually. Go to your wallet settings and add a custom network with RPC URL http://127.0.0.1:8545 and Chain ID ${wallet.expectedChainId}.`;
+      claiming.value = false;
+      return;
+    }
+
+    const signer = await wallet.getSigner();
+    if (!signer) {
+      error.value = "Could not get signer";
+      claiming.value = false;
+      return;
+    }
+
     const contract = new Contract(AIRDROP_ADDRESS, AIRDROP_ABI, signer);
     const tx = await contract.claim(eligibility.value.amount, eligibility.value.proof);
     txHash.value = tx.hash;
@@ -63,7 +72,12 @@ async function claimTokens() {
     // Refresh eligibility
     eligibility.value = await api.getProof(wallet.address!);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : "Claim transaction failed";
+    const msg = err instanceof Error ? err.message : "Claim transaction failed";
+    if (msg.includes("BAD_DATA") || msg.includes("could not decode result data")) {
+      error.value = "Contract not found at this address on the current network. Ensure you are on the correct chain and the contracts are deployed.";
+    } else {
+      error.value = msg;
+    }
   } finally {
     claiming.value = false;
   }
@@ -75,6 +89,14 @@ function formatEther(val: string | undefined): string {
     return parseFloat(ethers.formatEther(val)).toLocaleString();
   } catch {
     return val;
+  }
+}
+
+async function switchNetwork() {
+  error.value = null;
+  const ok = await wallet.ensureChain();
+  if (!ok) {
+    error.value = `Could not switch automatically. Please add a custom network in your wallet: RPC URL http://127.0.0.1:8545, Chain ID ${wallet.expectedChainId}, Currency ETH.`;
   }
 }
 </script>
@@ -96,6 +118,23 @@ function formatEther(val: string | undefined): string {
 
     <!-- Connected -->
     <div v-else style="margin-top: 24px">
+      <!-- Wrong network warning -->
+      <div v-if="!wallet.isCorrectChain" class="card" style="margin-bottom: 16px; border-color: var(--error); background: rgba(239, 68, 68, 0.08)">
+        <p style="color: var(--error); font-weight: 600; margin-bottom: 8px">⚠ Wrong Network</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem">
+          Your wallet is on Chain ID <strong>{{ wallet.chainId }}</strong>.
+          Please switch to <strong>Hardhat Local ({{ wallet.expectedChainId }})</strong> to claim your airdrop.
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px">
+          If the button below doesn't work, manually add a custom network in your wallet:<br>
+          <strong>RPC URL:</strong> <code>http://127.0.0.1:8545</code> &nbsp;
+          <strong>Chain ID:</strong> <code>{{ wallet.expectedChainId }}</code>
+        </p>
+        <button class="btn-primary" style="margin-top: 12px" @click="switchNetwork">
+          Switch to Hardhat Network
+        </button>
+      </div>
+
       <div class="card" style="margin-bottom: 16px">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px">
           <div>

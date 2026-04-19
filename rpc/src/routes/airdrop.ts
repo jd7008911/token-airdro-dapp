@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAirdropContract } from "../contracts";
+import { getAirdropContract, AIRDROP_ADDRESS, ensureContractDeployed } from "../contracts";
 import { getProofForAddress, getAllEntries } from "../merkle";
 import { ethers } from "ethers";
 
@@ -12,6 +12,7 @@ export const airdropRouter = Router();
 airdropRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     const contract = getAirdropContract();
+    await ensureContractDeployed(AIRDROP_ADDRESS, "TokenAirdrop");
     const [active, deadline, totalClaimed, balance, root] = await Promise.all([
       contract.airdropActive(),
       contract.claimDeadline(),
@@ -52,6 +53,7 @@ airdropRouter.get("/proof/:address", async (req: Request, res: Response) => {
 
     // Check on-chain claim status
     const contract = getAirdropContract();
+    await ensureContractDeployed(AIRDROP_ADDRESS, "TokenAirdrop");
     const claimed = await contract.hasClaimed(address);
 
     res.json({
@@ -96,6 +98,7 @@ airdropRouter.get("/claimed/:address", async (req: Request, res: Response) => {
       return;
     }
     const contract = getAirdropContract();
+    await ensureContractDeployed(AIRDROP_ADDRESS, "TokenAirdrop");
     const claimed = await contract.hasClaimed(address);
     res.json({ address, claimed });
   } catch (err: any) {

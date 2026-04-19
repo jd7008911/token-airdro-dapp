@@ -4,6 +4,8 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
+const INFURA_KEY = process.env.INFURA_API_KEY || "";
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.24",
@@ -23,10 +25,28 @@ const config: HardhatUserConfig = {
       chainId: 31337,
     },
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "",
+      url: `https://sepolia.infura.io/v3/${INFURA_KEY}`,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 11155111,
     },
+    mainnet: {
+      url: `https://mainnet.infura.io/v3/${INFURA_KEY}`,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 1,
+    },
+    polygon: {
+      url: `https://polygon-mainnet.infura.io/v3/${INFURA_KEY}`,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 137,
+    },
+    base: {
+      url: `https://base-mainnet.infura.io/v3/${INFURA_KEY}`,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 8453,
+    },
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
   },
   typechain: {
     outDir: "typechain-types",
